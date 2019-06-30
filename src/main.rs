@@ -18,5 +18,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     loop {
         chip8.run_instruction();
     }
+    
     Ok(())
 }

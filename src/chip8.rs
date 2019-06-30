@@ -1,6 +1,6 @@
-use crate::ram::Ram;
-use crate::cpu::Cpu;
-use crate::cpu;
+use ram::Ram;
+use cpu::Cpu;
+use cpu;
 
 pub struct Chip8 {
     ram: Ram,
