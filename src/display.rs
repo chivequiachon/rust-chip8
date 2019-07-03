@@ -12,7 +12,7 @@ impl Display {
 		}
 	}
 
-	pub fn get_idx_from_coords(x: usize, y: usize) {
+	pub fn get_idx_from_coords(x: usize, y: usize) -> usize {
 		y * WIDTH + x
 	}
 
@@ -31,7 +31,16 @@ impl Display {
 
 			let prev_value = self.screen(idx);
 			self.screen[idx] ^= bit;
+
+			if prev_value == 1 && self.screen[index] == 0 {
+				erased = true;
+			}
+
+			coord_x += 1;
+			b <<= 1;
 		}
+
+		erased
 	}
 
 	pub fn clear(&mut self) {
