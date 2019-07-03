@@ -1,11 +1,13 @@
 use std::fs::File;
 use std::io::Read;
 use std::error::Error;
-use chip8::Chip8;
+use crate::chip8::Chip8;
 
 mod ram;
 mod chip8;
 mod cpu;
+mod keyboard;
+mod bus;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut f = File::open("data/INVADERS")?;

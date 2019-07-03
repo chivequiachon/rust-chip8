@@ -1,7 +1,7 @@
-use ram::Ram;
+use crate::bus::Bus;
 use std::fmt;
-use rand;
-use rand::distributions::{IndependentSample, Range};
+use rand::Rng;
+use rand::rngs::ThreadRng;
 
 pub const PROGRAM_START: u16 = 0x200;
 
@@ -10,7 +10,7 @@ pub struct Cpu {
     pc: u16,
     i: u16,
     ret_stack: Vec<u16>,
-    rng: rand::ThreadRng,
+    rng: ThreadRng,
 }
 
 impl Cpu {
@@ -19,18 +19,20 @@ impl Cpu {
             vx: [0; 16],
             pc: PROGRAM_START,
             i: 0,
+            ret_stack: Vec::<u16>::new(),
+            rng: rand::thread_rng(),
         }
     }
 
-    pub fn run_instruction(&mut self, ram: &mut Ram) {
-        let hi = ram.read_byte(self.pc) as u16;
-        let lo = ram.read_byte(self.pc+1) as u16;
+    pub fn run_instruction(&mut self, bus: &mut Bus) {
+        let hi = bus.ram_read_byte(self.pc) as u16;
+        let lo = bus.ram_read_byte(self.pc+1) as u16;
         let instruction: u16 = (hi << 8) | lo;
         println!("Instruction read {:#X}: hi:{:#X} lo:{:#X}", instruction, hi, lo);
 
         let nnn = instruction & 0x0fff;
         let nn = (instruction & 0x00ff) as u8;
-        let n = instruction & 0x000f as u8;
+        let n = (instruction & 0x000f) as u8;
         let x = (nnn >> 8) as u8;
         let y = nn >> 4;
 
@@ -192,19 +194,44 @@ impl Cpu {
                 self.pc += (v0 + nnn);
             },
             0xc => {
-                let interval = Range::new(0, 255);
-                let number = interval.ind_sample(&mut self.rng);
-                self.write_reg_vx(x, number & nn);
+                let rand_number = self.rng.gen_range(0, 255);
+                self.write_reg_vx(x, rand_number & nn);
                 self.pc += 2;
             },
             0xd => {
                 // draw sprite
-                let vx = read_reg_vx(x);
-                let vy = read_reg_vx(y);
+                let vx = self.read_reg_vx(x);
+                let vy = self.read_reg_vx(y);
+                // self.debug_draw_sprite(bus, vx, vy, n);
                 self.pc += 2;
             },
-            0xe => {},
+            0xe => {
+                match nn {
+                    0x9e => {
+                        let key_vx = self.read_reg_vx(x);
+                        if bus.is_key_pressed(key_vx) {
+                            self.pc += 4;
+                        } else {
+                            self.pc += 2;
+                        }
+                    },
+                    0xa1 => {
+                        let key_vx = self.read_reg_vx(x);
+                        if !bus.is_key_pressed(key_vx) {
+                            self.pc += 4;
+                        } else {
+                            self.pc += 2;
+                        }
+                    },
+                    _ => panic!(
+                        "Unrecognized 0xe*** instruction {:#X}:{:#X}",
+                        self.pc,
+                        instruction
+                    ),
+                }
+            },
             0xf => {},
+            _ => panic!("Unrecognized instruction {:#X}:{:#X}", self.pc, instruction),
         }
     }
 
@@ -212,7 +239,7 @@ impl Cpu {
         self.vx[index as usize] = value;
     }
  
-    pub fn.read_reg_vx(&mut self, index: u8) {
+    pub fn read_reg_vx(&mut self, index: u8) -> u8 {
         self.vx[index as usize]
     }
 }
@@ -220,7 +247,7 @@ impl Cpu {
 impl fmt::Debug for Cpu {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "\npc: {:#X}\n", self.pc)?;
-        write!(f, "vx: ")?
+        write!(f, "vx: ")?;
         for item in &self.vx {
             write!(f, "{:#X}", *item)?;
         }
