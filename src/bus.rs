@@ -52,12 +52,20 @@ impl Bus {
 	pub fn get_delay_timer(&self) -> u8 {
 		let diff = time::Instant::now() - self.set_delay_timer_set_time;
 		let ms = diff.get_millis();
-		let ticks = ms / 17;
+		let ticks = ms / 17; // 60 Hz is approx equal to 17 ms
 		if ticks >= self.delay_timer as u64 {
 			0
 		} else {
 			self.delay_timer - ticks as u8
 		}
+	}
+
+	pub fn clear_screen(&mut self) {
+		self.display.clear();
+	}
+
+	pub fn get_display_buffer(&self) -> &[u8] {
+		self.keyboard.get_display_buffer()
 	}
 }
 

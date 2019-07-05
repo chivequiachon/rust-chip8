@@ -41,6 +41,7 @@ impl Cpu {
                 match nn {
                     0xe0 => {
                         // clear display screen
+                        bus.clear_screen();
                         self.pc += 2;
                     },
                     0xee => {
@@ -202,7 +203,7 @@ impl Cpu {
                 // draw sprite
                 let vx = self.read_reg_vx(x);
                 let vy = self.read_reg_vx(y);
-                // self.debug_draw_sprite(bus, vx, vy, n);
+                self.debug_draw_sprite(bus, vx, vy, n);
                 self.pc += 2;
             },
             0xe => {
@@ -230,8 +231,72 @@ impl Cpu {
                     ),
                 }
             },
-            0xf => {},
-            _ => panic!("Unrecognized instruction {:#X}:{:#X}", self.pc, instruction),
+            0xf => {
+                match nn {
+                    0x07 => {
+                        self.write_reg_vx(x, bus.get_delay_timer());
+                        self.pc += 2;
+                    },
+                    0x0a => {
+                        if let Some(val) = bus.get_key_pressed() {
+                            self.write_reg_vx(x, val);
+                            self.pc += 2;
+                        }
+                    },
+                    0x15 => {
+                        bus.set_delay_timer(self.read_reg_vx(x));
+                        self.pc += 2;
+                    },
+                    0x18 => {
+                        // no sound timer yet
+                        self.pc += 2;
+                    },
+                    0x1e => {
+                        self.i += (self.read_reg_vx(x) as u16);
+                        self.pc += 2;
+                    },
+                    0x29 => {
+                        //i == sprite address for character in Vx
+                        //Multiply by 5 because each sprite has 5 lines, each line
+                        //is 1 byte.
+                        self.i = self.read_reg_vx(x) as u16 * 5;
+                        self.pc += 2;
+                    },
+                    0x33 => {
+                        let vx = self.read_reg_vx(x);
+                        bus.ram_write_byte(self.i, vx / 100);
+                        bus.ram_write_byte(self.i + 1, (vx % 100) / 10);
+                        bus.ram_write_byte(self.i + 2, vx % 10);
+                        self.pc += 2;
+                    },
+                    0x55 => {
+                        for index in 0..x + 1 {
+                            let value = self.read_reg_vx(index);
+                            bus.ram_write_byte(self.i + index as u16, value);
+                        }
+                        self.i += x as u16 + 1;
+                        self.pc += 2;
+                    },
+                    0x65 => {
+                         for index in 0..x + 1 {
+                            let value = bus.ram_read_byte(self.i + index as u16);
+                            self.write_reg_vx(index, value);
+                        }
+                        self.i += x as u16 + 1;
+                        self.pc += 2;
+                    },
+                    _ => panic!(
+                        "Unrecognized 0xf*** instruction {:#X}:{:#X}",
+                        self.pc,
+                        instruction
+                    ),
+                }
+            },
+            _ => panic!(
+                "Unrecognized instruction {:#X}:{:#X}",
+                self.pc,
+                instruction
+            ),
         }
     }
 
@@ -241,6 +306,21 @@ impl Cpu {
  
     pub fn read_reg_vx(&mut self, index: u8) -> u8 {
         self.vx[index as usize]
+    }
+
+    fn debug_draw_sprite(&mut self, bus: &mut Bus, x: u8, y: u8, height: u8) {
+        let mut should_set_vf = false;
+        for sprite_y in 0..height {
+            let b = bus.ram_read_byte(self.i + sprite_y as u16);
+            if bus.debug_draw_byte(b, x, y + sprite_y) {
+                should_set_vf = true;
+            }
+        }
+        if should_set_vf {
+            self.write_reg_vx(0xF, 1);
+        } else {
+            self.write_reg_vx(0xF, 0);
+        }
     }
 }
 

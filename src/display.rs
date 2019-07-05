@@ -44,7 +44,7 @@ impl Display {
 	}
 
 	pub fn clear(&mut self) {
-		for pixel in self.screen.iter() {
+		for pixel in self.screen.iter_mut() {
 			*pixel = 0;
 		}
 	}
