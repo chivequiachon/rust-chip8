@@ -4,8 +4,9 @@ use std::error::Error;
 use crate::chip8::Chip8;
 
 mod ram;
-mod chip8;
 mod cpu;
+mod chip8;
+mod display;
 mod keyboard;
 mod bus;
 
